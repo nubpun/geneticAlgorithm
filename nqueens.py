@@ -3,7 +3,7 @@ import random
 
 
 class Solver_8_queens:
-    def __init__(self, pop_size=1000, cross_prob=0.7, mut_prob=0.1):
+    def __init__(self, pop_size=1000, cross_prob=0.0, mut_prob=1):
         self.pop_size = pop_size
         self.cross_prob = cross_prob
         self.mut_prob = mut_prob
@@ -12,11 +12,15 @@ class Solver_8_queens:
         self.__populations = []
         for i in range(pop_size):
             gen = []
+            temp_model = []
             for j in range(8):
-                column = [1] + [0] * 7
-                random.shuffle(column)
-                gen.extend(column)
+                row = [0] * j + [1] + [0] * (7 - j)
+                temp_model.append(row)
+            random.shuffle(temp_model)
+            for part in temp_model:
+                gen.extend(part)
             self.__populations.append(gen)
+        self.fitness()
 
     @staticmethod
     def visualization(gen):
@@ -39,19 +43,6 @@ class Solver_8_queens:
                 for j in range(8):
                     if gen[i * 8 + j] == 1:
                         under_attack = 0
-                        for x in range(i + 1, 8):
-                            if gen[x * 8 + j] == 1:
-                                under_attack += 1
-                        for x in range(i - 1, -1, -1):
-                            if gen[x * 8 + j] == 1:
-                                under_attack += 1
-                        for y in range(j + 1, 8):
-                            if gen[i * 8 + y] == 1:
-                                under_attack += 1
-                        for y in range(j - 1, -1, -1):
-                            if gen[i * 8 + y] == 1:
-                                under_attack += 1
-
                         x = i + 1
                         y = j + 1
                         while (x < 8) and (y < 8):
@@ -99,7 +90,7 @@ class Solver_8_queens:
                 if cur >= prob:
                     temp_populations.append(self.__populations[idGen])
                     break
-        return temp_populations
+        self.__populations = temp_populations
 
     def cross(self):
         for cnt in range(1):
@@ -114,35 +105,39 @@ class Solver_8_queens:
                 self.__populations[parent_second][i] = t
 
     def mutation(self):
-        for cnt in range(1):
+        for cnt in range(self.pop_size ):
             if random.random() > self.mut_prob:
                 return
             gen_id = random.randint(0, self.pop_size - 1)
-            row = random.randint(0, 7)
-            column = random.randint(0, 7)
+            row_a = random.randint(0, 7)
+            row_b = random.randint(0, 7)
             for i in range(8):
-                if i == column:
-                    self.__populations[gen_id][row * 8 + i] = 1
-                else:
-                    self.__populations[gen_id][row * 8 + i] = 0
+                t = self.__populations[gen_id][row_a * 8 + i]
+                self.__populations[gen_id][row_a * 8 + i] = self.__populations[gen_id][row_b * 8 + i]
+                self.__populations[gen_id][row_b * 8 + i] = t
 
-    def solve(self, min_fitness=0.9, max_epochs=1000):
-        cur_min_fitness = 0
+    def solve(self, min_fitness=0.99, max_epochs=30):
+        cur_max_fitness = 0
         epoch_num = 0
 
-        while(cur_min_fitness < min_fitness) and (epoch_num < max_epochs):
-            self.fitness()
-            temp_populations = self.selection()
-            self.__populations = temp_populations
+        while(cur_max_fitness < min_fitness) and (epoch_num < max_epochs):
+            self.selection()
             self.cross()
             self.mutation()
+            self.fitness()
+
+            best_fit_id = 0
+            for i in range(self.pop_size):
+                if self.__scores[i] > self.__scores[best_fit_id]:
+                    best_fit_id = i
+            #avg = sum(self.__scores) / self.pop_size
+            #mn = min(self.__scores)
+            #print(self.__scores[best_fit_id], ' ', avg, ' ', mn)
+            #print(self.visualization(self.__populations[best_fit_id]))
+
+            cur_max_fitness = self.__scores[best_fit_id] / 28
             epoch_num += 1
 
-        self.fitness()
-        best_fit_id = 0
-        for i in range(self.pop_size):
-            if self.__scores[i] > self.__scores[best_fit_id]:
-                best_fit_id = i
         best_fit = self.__scores[best_fit_id]
-        visualization = self.visualization(self.__populations[0])
+        visualization = self.visualization(self.__populations[best_fit_id])
         return best_fit, epoch_num, visualization
